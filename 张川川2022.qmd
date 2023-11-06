@@ -229,7 +229,7 @@ d Y = Y \* beta / x
 
 转算成时间，少1小时在校时间，课外增加大概2.2分钟。虽然只使用了基准模型，但是这个结果和原文几乎一样。
 
-## 详细重现
+## 详细重现：五、在校时长与教育不平等
 
 重现目标"四、在校时长与家庭教育投入"，回归表格"表4"。
 
@@ -360,8 +360,7 @@ check(list(lm0,lm1,lm3))
 
 #### 加入控制变量的回归
 
-```{}
-```
+注意，这里的做法是错的，应该把分类变量设置为factor，这里懒得弄了，核心变量没错即可。
 
 ```{r}
 
@@ -380,15 +379,66 @@ lm2 = lm(fm2, data = reg_df_trimmed)
 lm3 = lm(fm3,data = reg_df_trimmed)
 
 
-check(list(lm1,lm2,lm3),custom.header = list('控制变量略'=1:3),
-          custom.model.names = c('ln课外辅导时长','ln课外作业时长','ln课外辅导费用'),
+check(list(lm1,lm2,lm3),
+      custom.header = list('控制变量略'=1:3),
+      custom.model.names = c('ln课外辅导时长','ln课外作业时长','ln课外辅导费用'),
       custom.coef.map = list("log(school_hours)"= "ln(在校时长)"),digits=3)
 ```
 
+基本上符合原文章的表4。
+
 ### 工具变量
 
-同区其他学生的平均在校时间
+我们使用同区县其它学校同年级学生的在校时长作为工具变量对方程（2）进行了 IV 估计
+
+使用学校数据：计算同区县的全部学校的总在校时间，减去本校的在校时间，再除以本区学校数量-1
+
+区县代码 ctyids，学校代码schids
 
 ```{r}
 names(reg_df)
 ```
+
+```{r}
+tmp_df = na.omit(school_info_df[c('schids','ctyids','school_hours')])
+head(tmp_df)
+```
+
+```{r}
+city_df = group_by(tmp_df,ctyids) %>% summarize(city_n=n(),city_sum_sh = sum(school_hours))
+head(city_df)
+```
+
+```{r}
+other_school_hours_df = merge(tmp_df,city_df) %>% mutate(other_school_hours = (city_sum_sh - school_hours)/ (city_n - 1))
+head(other_school_hours_df)
+```
+
+```{r}
+reg_df_trimmed_2 = merge(reg_df_trimmed,other_school_hours_df[c('ctyids','schids','other_school_hours')])
+```
+
+```{r message = FALSE}
+library('AER')
+```
+
+```{r}
+
+iv_ctrls = paste(c("| other_school_hours", student_ctrls, school_ctrls ,"grade9"),collapse = " + ")
+print(iv_ctrls)
+
+fm1 = as.formula(paste(paste(c('log(tutoring_hours+1) ~ log(school_hours)', student_ctrls, school_ctrls ,"grade9") ,collapse = " + "), iv_ctrls))
+fm2 = as.formula(paste(paste(c('log(tutoring_homework+1) ~ log(school_hours)', student_ctrls, school_ctrls ,"grade9"),collapse = " + "), iv_ctrls))
+fm3 = as.formula(paste(paste(c('log(tutoring_fee+1) ~ log(school_hours)', student_ctrls, school_ctrls ,"grade9"),collapse = " + "), iv_ctrls))
+
+lm1 = ivreg(fm1,data = reg_df_trimmed_2)
+lm2 = ivreg(fm2,data = reg_df_trimmed_2)
+lm3 = ivreg(fm3,data = reg_df_trimmed_2)
+
+check(list(lm1,lm2,lm3),
+      custom.header = list('使用其他学校的平均在校时长作为工具变量'=1:3),
+      custom.model.names = c('ln课外辅导时长','ln课外作业时长','ln课外辅导费用'),
+      custom.coef.map = list("log(school_hours)"= "ln(在校时长)"),digits=3)
+```
+
+IV之后更加显著了，并且费用也显著了。没有找到在线附录，因此无法核对这个表格。

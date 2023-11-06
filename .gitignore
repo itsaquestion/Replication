@@ -132,3 +132,5 @@ MANIFEST
 *.kate-swp
 *.tmp
 *.temp
+
+/.quarto/
