@@ -1,0 +1,27 @@
+project:
+  type: book
+
+book:
+  title: "论文复现"
+  author: "Lee"
+  date: "2023/11/3"
+  chapters:
+    - index.qmd
+    - 张川川2022.qmd
+
+  
+
+bibliography: references.bib
+
+format:
+  html:
+    theme: 
+      - cosmo
+    number-sections: true
+    number-depth: 3
+   
+  pdf:
+    documentclass: scrreprt
+
+editor: visual
+

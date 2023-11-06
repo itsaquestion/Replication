@@ -1,0 +1,228 @@
+# 张川川2022 {#sec-张川川2022}
+
+《教育减负、家庭教育投入与教育不平等》
+
+## 基本信息
+
+### 摘要
+
+教育减负思潮的推动下 ，中小学生在校时长不断缩短 ，在课堂内外产生了广泛影响 ，也引发了针 对家庭教育负担和教育公平的广泛争论。本文使用中国教育追踪调查数据考察了在校时长对家庭教育负担 和教育不平等的影响 ，以期为平息政策争论和完善教育减负政策提供学术上的借鉴。本文的实证分析表明： （1）初中生在校时长与其课外学习投入之间存在统计上显著的替代关系 ，但经济显著性有限；（2）学生在校时 长的减少导致父母在子女养育上的时间投入增加 ，对较低学历的父母影响更大 ，并且导致他们的就业率下降； （3）由于在家庭经济条件较好、非农户口的学生中 ，在校时长减少导致的学生课外学习投入和父母在子女养育 上的时间投入增加的更多 ，在校时长的减少导致同一班级、年级内学生成绩的离散程度显著上升；（4）除了在 校时长外 ，学生家庭背景、父母对子女教育的焦虑程度等诸多因素也与家庭教育投入息息相关。本文的研究 表明通过缩短在校时长所实现的教育减负在减轻学生课外学习负担方面的作用较为有限 ，且加重了教育不平 等 ，从减轻父母对子女教育的焦虑程度等其他角度入手可能更有助于降低家庭教育负担。
+
+### 基本概念
+
+核心解释变量是在校时间。等于问：在校时间的缩短，是否会
+
+1.  （替代效应）家庭学习时间增加
+2.  父母指导时间增加，影响父母工作
+3.  成绩离散程度增加。
+4.  其他
+
+## 数据
+
+数据来自 CEPS 2014\~2015 学年和 2014\~2015 学年调查。
+
+### 模型
+
+模型没有时间t，应该是混合截面数据。
+
+### 数据构建
+
+#### 在校时间
+
+在校时长。CEPS 调查在"校领导问卷"部分详细询问了每个学校每个年级学生的到校时间、离校时间和 每周上课天数。我们据此计算学生一周内平均每天的在校时长。
+
+```{r message=FALSE}
+library(tidyverse)
+library(haven)
+```
+
+领导问卷
+
+```{r}
+base_path = "C:/Users/lee/nutcloud/Data/ceps/中国教育追踪调查2014~2015"
+file_name = "cepsw2principalCN.dta"
+school_df = read_dta(file.path(base_path,file_name))
+```
+
+上学天数
+
+```{r}
+school_df$w2ple01
+```
+
+在校时间
+
+```{r}
+head(school_df[c('w2ple02a1','w2ple02a2','w2ple02b1','w2ple02b2')])
+```
+
+每天在校时长和每周在校时长
+
+```{r}
+start_time = school_df$w2ple02a1 + school_df$w2ple02a2/60
+end_time = school_df$w2ple02b1 + school_df$w2ple02b2/60
+school_df$school_hours = end_time - start_time
+attr(school_df$school_hours,'label') = '每天在校时长'
+
+```
+
+```{r}
+school_df$school_hours_week = school_df$w2ple01 * school_df$school_hours
+attr(school_df$school_hours_week,'label') = "每周在校时长"
+
+head(school_df[c('w2ple01', 'w2ple02a1','w2ple02a2','w2ple02b1','w2ple02b2','school_hours')])
+```
+
+看分布，有异常值
+
+```{r,warning=FALSE}
+library(ggpubr)
+gghistogram(school_df$school_hours)  
+gghistogram(school_df$school_hours[school_df$school_hours>0]) 
+
+```
+
+看看分布
+
+注：这是学校层面的分布，不是学生层面的，因此和原文的表格不同。
+
+```{r warning=FALSE}
+library(psych)
+
+describe(school_df$school_hours[school_df$school_hours>0])
+```
+
+#### 课外辅导时间
+
+课外辅导时长。CEPS调查统计了每个学生在调查前一周平均每天的课外活动安排，包括与学业有关的课外辅导时长、完成家长和辅导班布置的作业所花费的时间和课外娱乐时长，这里与学业有关的课外辅导时长是指学生平均每天参加语文、数学、英语课外辅导班的总时长。本文用**与学业有关的课外辅导时长**和**完成课外作业的时长衡量课外学习时长**。
+
+（注：学校上课+做学校作业，不算在内）
+
+```{r}
+base_path = "C:/Users/lee/nutcloud/Data/ceps/中国教育追踪调查2014~2015"
+file_name = "cepsw2studentCN.dta"
+student_df = read_dta(file.path(base_path,file_name))
+```
+
+追踪数据这部分改为选择题（定序变量），但而baseline是填空题。
+
+**注意：不合并数据的话，考虑用(原值-1)也没问题**
+
+```{r}
+head(student_df$w2b07a)
+```
+
+这里简化起见，把两个变量合并了：学业辅导班时长 + 非学校作业时长
+
+注，和原文不同
+
+```{r}
+head(student_df[c('w2b07b','w2b07c','w2b08b','w2b08c')])
+```
+
+合并后的课外学习综合时间 = (平时每天时间 \* 2 + 周末每天时间 \* 2) / 7
+
+```{r}
+student_df$private_tutoring = ((student_df$w2b07b + student_df$w2b07c - 2) * 5 +
+  (student_df$w2b08b + student_df$w2b08c - 2) * 2)/7
+
+```
+
+```{r warning=FALSE}
+gghistogram(student_df$private_tutoring)
+```
+
+### 简单回归
+
+做一个简单回归，只有主要自变量和因变量
+
+$$
+\ln(private\_tutoring_{igs} = \beta_0 + \beta_1 \ln(school\_hours_{gs}) + \varepsilon_{igs}
+$$
+
+#### 并表
+
+注意：有异常值
+
+```{r}
+head(student_df[c('ids','schids','private_tutoring')])
+```
+
+```{r}
+head(school_df[c('schids','school_hours')])
+```
+
+```{r}
+reg_df = merge(student_df[c('ids','schids','private_tutoring')],school_df[c('schids','school_hours')])
+head(reg_df)
+```
+
+```{r}
+describe(select(reg_df,-ids,-schids))
+```
+
+```{r}
+# n% 截尾，以na填充
+trim_columns <- function(df, cols, trim_percent = 0.05) {
+  # 确保trim_percent在0到0.5之间
+  if(trim_percent <= 0 || trim_percent >= 0.5) {
+    stop("trim_percent must be between 0 and 0.5")
+  }
+  
+  # 对指定的每一列执行截尾操作
+  for(col in cols) {
+    # 检查列名是否在数据框中
+    if(!col %in% names(df)) {
+      stop(paste("Column", col, "not found in the dataframe"))
+    }
+    
+    # 计算n%和(1-n)%分位数
+    q_low <- quantile(df[[col]], probs = trim_percent, na.rm = TRUE)
+    q_high <- quantile(df[[col]], probs = 1 - trim_percent, na.rm = TRUE)
+    
+    # 将超出n%分位数范围的值设为NA
+    df[[col]][df[[col]] < q_low | df[[col]] > q_high] <- NA
+  }
+  
+  return(df)
+}
+
+# 使用方式示例:
+# df_trimmed <- trim_columns(df = your_dataframe, cols = c('col1', 'col2'), trim_percent = 0.01)
+
+
+```
+
+#### 回归前清洗
+
+5%截尾来处理异常值
+
+```{r}
+reg_df_trimmed = trim_columns(reg_df,c('private_tutoring','school_hours'),0.05)
+```
+
+```{r}
+describe(select(reg_df_trimmed,-ids,-schids))
+```
+
+#### 回归
+
+```{r}
+lm0 = lm(log(private_tutoring+1) ~ log(school_hours),data=reg_df_trimmed)
+```
+
+```{r message=FALSE}
+library(texreg)
+screenreg(lm0,custom.header = list('log(private_tutoring'=1),
+          custom.model.names = 'baseline',stars = c(0.01, 0.05, 0.1))
+```
+
+每减少1%的在校时间，会增加0.34%的课外时间，
+
+d Y = Y \* beta / x
+
+```{r}
+(1.08 * (-0.34) / 9.93) * 60 
+```
+
+转算成时间，少1小时在校时间，课外增加大概2.2分钟。虽然只使用了基准模型，但是这个结果和原文几乎一样。
