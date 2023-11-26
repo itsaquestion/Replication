@@ -308,3 +308,8 @@ screenreg_unicode <- function(l,
     message(paste0("The table was written to the file '", file, "'.\n"))
   }
 }
+
+
+check = function(x, include.ci = FALSE, ...){
+  screenreg_unicode(x, include.ci = include.ci, stars = c(0.01, 0.05, 0.1), ...)
+}

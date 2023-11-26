@@ -1,0 +1,44 @@
+```{r}
+library(tidyverse)
+library(haven)
+```
+
+```{r}
+base_path = 'C:\\Users\\lee\\nutcloud\\Data\\cfps'
+
+file_path = '2020\\cfps2020person_202112.dta'
+
+df = read_dta(file.path(base_path, file_path))
+head(df)
+```
+
+```{r}
+attributes(df$pd5total)
+```
+
+```{r}
+get_var_info = function(x){
+  label = attr(x,"label")
+  
+  labels = attr(x,"labels")
+  
+  labels_str = paste0(labels, ":",  names(labels), collapse = ", ")
+  
+  data.frame(label = label, labels = labels_str)
+}
+
+all_vars = reduce(lapply(df, get_var_info),rbind)
+
+all_vars = data.frame(var = names(df), all_vars)
+
+all_vars
+
+```
+
+```{r}
+write_excel_csv(all_vars,'cfps2020person_202112_vars.csv')
+```
+
+```{r}
+write_excel_csv(all_vars[c("var","label")],"cfps2020person_202112_vars_compact.csv")
+```
